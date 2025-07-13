@@ -2,7 +2,7 @@
 
 ## Overview
 
-This documentation outlines the comprehensive design and implementation strategy for building a new enterprise platform exclusively on **Amazon Web Services (AWS)**. The platform leverages AWS-native services and best practices to serve as the foundation for highly available, scalable, and secure application delivery and deployment using microservices architecture deployed within **Amazon EKS (Elastic Kubernetes Service)** clusters.
+This guide shows you how to build a complete business platform using **Amazon Web Services (AWS)**. Think of it as a blueprint for creating a modern, cloud-based system that can grow with your business needs. The platform uses AWS tools and services to help teams build, deploy, and manage applications safely and efficiently using containers and microservices.
 
 ### AWS-First Approach
 This platform architecture is designed specifically for AWS cloud infrastructure, utilizing:
@@ -13,7 +13,7 @@ This platform architecture is designed specifically for AWS cloud infrastructure
 
 ## Platform Architecture Diagram
 
-![AWS Platform Architecture](https://drive.google.com/uc?export=view&id=1AkDf80k9gGUKlxn9tzMONjdmkHlgBbEo)
+![AWS Platform Architecture](https://drive.google.com/file/d/1gGlg55Xh6DXk4kSqzlSSJzyUva1Iwhwq/view?usp=drive_link)
 
 *Figure 1: AWS Enterprise Platform Architecture - Four-Layer Design*
 
@@ -40,12 +40,21 @@ The architecture diagram above illustrates our comprehensive four-layer AWS plat
 - **Amazon ElastiCache**: In-memory caching (Redis/Memcached)
 
 **🔒 Security & Observability Layer**
-- **Amazon CloudWatch**: Comprehensive monitoring and logging
-- **AWS X-Ray**: Distributed tracing and performance analysis
-- **Amazon GuardDuty**: Threat detection and security monitoring
-- **AWS Security Hub**: Centralized security findings management
 
-This layered approach ensures separation of concerns, scalability, and security while maintaining AWS-native integration across all components.
+### Security Services
+- **AWS IAM**: Identity and access management
+- **AWS KMS**: Key management and encryption
+- **AWS Secrets Manager**: Secure secrets and credentials management
+- **AWS Config**: Configuration compliance and governance
+- **Amazon GuardDuty**: Intelligent threat detection and security monitoring
+- **AWS CloudTrail**: API activity logging and audit trails
+
+### Observability & Monitoring
+- **Amazon CloudWatch**: AWS-native monitoring, logging, and alerting
+- **AWS X-Ray**: Distributed tracing and performance analysis
+- **Datadog**: Centralized monitoring and observability platform
+
+This layered approach ensures separation of concerns, scalability, and security while maintaining AWS-native integration across all components with enhanced third-party monitoring capabilities.
 
 ## Table of Contents
 
@@ -97,14 +106,19 @@ The AWS-native platform is designed to enable rapid, secure, and reliable deploy
 - **Load Balancing**: Application Load Balancer, Network Load Balancer
 
 ### Security & Identity
-- **Security**: AWS WAF, Shield, GuardDuty, Security Hub
-- **Identity**: IAM Identity Center, AWS IAM, Secrets Manager
+- **Security**: AWS WAF, Shield, GuardDuty, Config
+- **Identity**: IAM, KMS, Secrets Manager
 - **Compliance**: AWS Config, CloudTrail, AWS Audit Manager
+
+### Monitoring & Observability
+- **AWS Native**: Amazon CloudWatch, AWS X-Ray
+- **Third-Party**: Datadog (centralized monitoring)
+- **Management**: AWS Systems Manager, AWS Organizations
 
 ### Developer & Operations Tools
 - **CI/CD**: Jenkins, AWS CodeBuild, ArgoCD
-- **Monitoring**: Amazon CloudWatch, AWS X-Ray
-- **Management**: AWS Systems Manager, AWS Organizations
+- **Infrastructure as Code**: AWS CloudFormation, Terraform
+- **Container Registry**: Amazon ECR
 
 ## Quick Navigation
 

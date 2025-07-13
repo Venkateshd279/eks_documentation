@@ -13,497 +13,476 @@ This document presents the comprehensive high-level architecture for the AWS ent
 - **Zero-Trust Security**: Comprehensive security controls at every layer
 - **Cost Optimization**: Intelligent resource management and optimization
 
-## Overall Architecture Diagram
+## Multi-Region Disaster Recovery Architecture
 
-```
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│                                GLOBAL LAYER                                      │
-├─────────────────────────────────────────────────────────────────────────────────┤
-│  Route 53    │  CloudFront   │   WAF    │   Shield   │  Certificate Manager     │
-│  (DNS)       │  (CDN/Edge)   │ (Web FW) │  (DDoS)    │     (TLS/SSL)           │
-└─────────────────────────────────────────────────────────────────────────────────┘
-                                      │
-                               ┌─────────────┐
-                               │ API Gateway │
-                               │ (Ingress)   │
-                               └─────────────┘
-                                      │
-┌─────────────────────────────────────┼─────────────────────────────────────┐
-│                            REGION: US-EAST-1                                │
-├─────────────────────────────────────┼─────────────────────────────────────┤
-│                                     │                                     │
-│  ┌─────────────────────────────────────────────────────────────────────┐  │
-│  │                        PRODUCTION VPC                               │  │
-│  │                                                                     │  │
-│  │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐    │  │
-│  │  │   AZ-1a         │  │   AZ-1b         │  │   AZ-1c         │    │  │
-│  │  │                 │  │                 │  │                 │    │  │
-│  │  │ ┌─────────────┐ │  │ ┌─────────────┐ │  │ ┌─────────────┐ │    │  │
-│  │  │ │Public Subnet│ │  │ │Public Subnet│ │  │ │Public Subnet│ │    │  │
-│  │  │ │  (ALB)      │ │  │ │  (ALB)      │ │  │ │  (ALB)      │ │    │  │
-│  │  │ └─────────────┘ │  │ └─────────────┘ │  │ └─────────────┘ │    │  │
-│  │  │                 │  │                 │  │                 │    │  │
-│  │  │ ┌─────────────┐ │  │ ┌─────────────┐ │  │ ┌─────────────┐ │    │  │
-│  │  │ │Private      │ │  │ │Private      │ │  │ │Private      │ │    │  │
-│  │  │ │Subnet       │ │  │ │Subnet       │ │  │ │Subnet       │ │    │  │
-│  │  │ │(EKS Nodes)  │ │  │ │(EKS Nodes)  │ │  │ │(EKS Nodes)  │ │    │  │
-│  │  │ └─────────────┘ │  │ └─────────────┘ │  │ └─────────────┘ │    │  │
-│  │  │                 │  │                 │  │                 │    │  │
-│  │  │ ┌─────────────┐ │  │ ┌─────────────┐ │  │ ┌─────────────┐ │    │  │
-│  │  │ │Database     │ │  │ │Database     │ │  │ │Database     │ │    │  │
-│  │  │ │Subnet       │ │  │ │Subnet       │ │  │ │Subnet       │ │    │  │
-│  │  │ │(RDS/Cache)  │ │  │ │(RDS/Cache)  │ │  │ │(RDS/Cache)  │ │    │  │
-│  │  │ └─────────────┘ │  │ └─────────────┘ │  │ └─────────────┘ │    │  │
-│  │  └─────────────────┘  └─────────────────┘  └─────────────────┘    │  │
-│  └─────────────────────────────────────────────────────────────────────┘  │
-│                                     │                                     │
-│  ┌─────────────────────────────────────────────────────────────────────┐  │
-│  │                     SHARED SERVICES VPC                            │  │
-│  │  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐   │  │
-│  │  │  Monitoring │ │   Logging   │ │  Security   │ │  CI/CD      │   │  │
-│  │  │  (Grafana   │ │ (ELK Stack) │ │  (Vault)    │ │ (ArgoCD)    │   │  │
-│  │  │  Prometheus)│ │             │ │             │ │             │   │  │
-│  │  └─────────────┘ └─────────────┘ └─────────────┘ └─────────────┘   │  │
-│  └─────────────────────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                      │
-                              ┌─────────────────┐
-                              │ Transit Gateway │
-                              └─────────────────┘
-                                      │
-┌─────────────────────────────────────┼─────────────────────────────────────┐
-│                            REGION: US-WEST-2                               │
-│                          (Disaster Recovery)                               │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                      │
-                              ┌─────────────────┐
-                              │ Direct Connect  │
-                              │   On-Premises   │
-                              └─────────────────┘
-```
+### Architecture Overview Diagram
 
-## Core Architecture Components
+![AWS Multi-Region Architecture](https://drive.google.com/uc?export=view&id=MULTI_REGION_DIAGRAM_ID)
 
-### 1. Global Infrastructure Layer
+*Figure 2: Multi-Region AWS Enterprise Platform with Disaster Recovery*
 
-#### DNS and Traffic Management
-```yaml
-GlobalInfrastructure:
-  Route53:
-    HostedZones:
-      - Primary: "company.com"
-        Type: "Public"
-        HealthChecks: true
-        GeolocationRouting: true
-        
-    TrafficPolicies:
-      - Name: "multi-region-failover"
-        Type: "failover"
-        Regions:
-          - Primary: "us-east-1"
-            Secondary: "us-west-2"
-            
-  CloudFront:
-    GlobalDistribution:
-      EdgeLocations: 400+
-      RegionalEdgeCaches: 13
-      
-    Behaviors:
-      - PathPattern: "/api/*"
-        CachingPolicy: "CachingDisabled"
-        OriginRequestPolicy: "CORS-S3Origin"
-        
-      - PathPattern: "/static/*"
-        CachingPolicy: "CachingOptimized"
-        TTL: 86400
-```
+### Regional Availability Strategy
 
-#### Global Security Layer
-```yaml
-GlobalSecurity:
-  WAF:
-    Scope: "CLOUDFRONT"
-    Rules:
-      - ManagedRules: ["CommonRuleSet", "KnownBadInputs"]
-      - CustomRules: ["RateLimit", "GeoBlocking"]
-      - BotControl: "Enhanced"
-      
-  Shield:
-    Type: "Advanced"
-    Features:
-      - DDoSProtection: "Enhanced"
-      - 24x7Support: true
-      - CostProtection: true
-```
+The platform is designed with **Active-Active** multi-region deployment to ensure business continuity and disaster recovery capabilities:
 
-### 2. Regional Architecture
+#### **Primary Region (US-East-1)**
+- **Purpose**: Primary production workloads
+- **Traffic Distribution**: 70% of production traffic
+- **Full Capacity**: Complete application stack deployment
+- **Real-time Monitoring**: Continuous health checks and monitoring
 
-#### Multi-VPC Design
-```yaml
-RegionalArchitecture:
-  VPCs:
-    Production:
-      CIDR: "10.1.0.0/16"
-      Purpose: "Production workloads"
-      
-    SharedServices:
-      CIDR: "10.0.0.0/16"
-      Purpose: "Platform services"
-      
-    Security:
-      CIDR: "10.3.0.0/16"
-      Purpose: "Security tools"
-      
-    NonProduction:
-      CIDR: "10.2.0.0/16"
-      Purpose: "Dev/Test environments"
-      
-  Connectivity:
-    TransitGateway:
-      - Name: "platform-tgw"
-        Attachments: ["Production", "SharedServices", "Security"]
-        RouteTable: "Custom"
-```
+#### **Secondary Region (US-West-2)**  
+- **Purpose**: Disaster recovery and load distribution
+- **Traffic Distribution**: 30% of production traffic
+- **Full Capacity**: Complete application stack deployment (standby ready)
+- **Automatic Failover**: Seamless traffic redirection during outages
 
-### 3. Kubernetes Platform
+#### **Cross-Region Components**
 
-#### EKS Cluster Architecture
-```yaml
-EKSPlatform:
-  ControlPlane:
-    Version: "1.28"
-    Endpoint:
-      Private: true
-      Public: false
-    Logging: ["api", "audit", "authenticator"]
-    
-  WorkerNodes:
-    NodeGroups:
-      - Name: "general-purpose"
-        InstanceTypes: ["m5.large", "m5.xlarge"]
-        CapacityType: "ON_DEMAND"
-        Scaling:
-          Min: 3
-          Max: 10
-          Desired: 5
-          
-      - Name: "spot-workloads"
-        InstanceTypes: ["m5.large", "c5.large"]
-        CapacityType: "SPOT"
-        Scaling:
-          Min: 0
-          Max: 20
-          Desired: 5
-          
-  AddOns:
-    - Name: "vpc-cni"
-      Version: "v1.15.0"
-    - Name: "cluster-autoscaler"
-    - Name: "aws-load-balancer-controller"
-    - Name: "external-dns"
-    - Name: "cert-manager"
-```
+**Global Services (Region-Agnostic)**
+- **Route 53**: Global DNS with health-based routing
+- **CloudFront**: Global CDN with multiple origin failover
+- **WAF & Shield**: Global security protection
+- **IAM**: Cross-region identity and access management
+
+**Data Replication & Synchronization**
+- **Aurora Global Database**: Sub-second cross-region replication
+- **S3 Cross-Region Replication**: Real-time data synchronization  
+- **DynamoDB Global Tables**: Multi-region NoSQL replication
+- **ElastiCache Global Datastore**: Cross-region cache replication
+
+**Regional Infrastructure Per Region**
+
+**Production VPC (Each Region)**
+- **Multi-AZ Design**: 3 Availability Zones for high availability
+- **EKS Clusters**: Kubernetes workloads across multiple AZs
+- **Application Load Balancers**: Regional traffic distribution
+- **Database Tier**: Aurora clusters with read replicas
+
+**Shared Services VPC (Each Region)**
+- **Monitoring Stack**: CloudWatch, Datadog, and observability tools
+- **CI/CD Pipeline**: Jenkins and ArgoCD for deployment automation
+- **Security Services**: Centralized security monitoring and management
+- **Logging Infrastructure**: Centralized log aggregation and analysis
+
+## Disaster Recovery Components
+
+### 1. Business Continuity Features
+
+#### **Recovery Time Objectives (RTO)**
+- **Application Recovery**: Less than 5 minutes
+- **Database Recovery**: Less than 1 minute (Aurora Global)
+- **DNS Failover**: Less than 30 seconds
+- **Complete Regional Failover**: Less than 15 minutes
+
+#### **Recovery Point Objectives (RPO)**
+- **Database Data Loss**: Less than 1 second
+- **Application State**: Real-time synchronization
+- **File Storage**: Near real-time replication
+- **Configuration Data**: Instant synchronization
+
+### 2. High Availability Architecture
+
+#### **Multi-AZ Deployment Strategy**
+Each region implements a three-tier availability zone strategy:
+
+**Availability Zone Distribution**
+- **AZ-A**: Primary compute and database workloads
+- **AZ-B**: Secondary compute with database replicas  
+- **AZ-C**: Tertiary compute for burst capacity
+
+**Load Distribution**
+- **Traffic Splitting**: Intelligent routing across AZs
+- **Health Monitoring**: Continuous availability checks
+- **Automatic Failover**: Instant traffic rerouting on failure
+- **Capacity Planning**: Dynamic scaling based on demand
+
+### 3. Data Resilience Strategy
+
+#### **Cross-Region Data Protection**
+The platform ensures comprehensive data protection across regions:
+
+**Database Replication**
+- **Aurora Global Database**: Automatic cross-region replication
+- **DynamoDB Global Tables**: Multi-master replication
+- **ElastiCache Global Datastore**: In-memory data synchronization
+- **Backup Strategy**: Automated cross-region backups
+
+**Storage Replication**
+- **S3 Cross-Region Replication**: Real-time object synchronization
+- **EBS Snapshots**: Automated cross-region backup
+- **EFS Backup**: Cross-region file system protection
+- **Application Data**: Kubernetes volume snapshots
 
 ## Application Architecture Patterns
 
-### 1. Microservices Design
+### 1. Microservices Design Principles
 
-#### Service Decomposition Strategy
-```yaml
-MicroservicesArchitecture:
-  DomainBoundaries:
-    UserManagement:
-      Services: ["user-service", "auth-service", "profile-service"]
-      Database: "PostgreSQL"
-      
-    OrderProcessing:
-      Services: ["order-service", "payment-service", "inventory-service"]
-      Database: "PostgreSQL + Redis"
-      
-    Analytics:
-      Services: ["analytics-service", "reporting-service"]
-      Database: "DynamoDB + ElastiSearch"
-      
-  Communication:
-    Synchronous: "REST + gRPC"
-    Asynchronous: "Event-driven (SQS/SNS)"
-    ServiceMesh: "Istio"
-    
-  DataStrategy:
-    Pattern: "Database per service"
-    Consistency: "Eventual consistency"
-    Transactions: "Saga pattern"
-```
+#### **Domain-Driven Service Boundaries**
+The platform organizes microservices around business domains to ensure loose coupling and high cohesion:
 
-#### Service Mesh Integration
-```yaml
-ServiceMesh:
-  Istio:
-    Components:
-      - ControlPlane: "istiod"
-      - DataPlane: "envoy-proxy"
-      - Gateways: "ingress/egress"
-      
-    Features:
-      - mTLS: "STRICT"
-      - TrafficManagement: true
-      - SecurityPolicies: true
-      - Observability: true
-      
-    Configuration:
-      - VirtualServices: "Traffic routing"
-      - DestinationRules: "Load balancing"
-      - ServiceEntries: "External services"
-      - PeerAuthentication: "mTLS policies"
-```
+**User Management Domain**
+- **Services**: User Service, Authentication Service, Profile Service
+- **Database**: Dedicated PostgreSQL instance per service
+- **Communication**: REST APIs with JWT token validation
 
-### 2. Data Architecture
+**Order Processing Domain**  
+- **Services**: Order Service, Payment Service, Inventory Service
+- **Database**: PostgreSQL with Redis caching layer
+- **Communication**: Event-driven with SQS/SNS messaging
 
-#### Multi-Database Strategy
-```yaml
-DataArchitecture:
-  RelationalData:
-    Primary: "Amazon Aurora PostgreSQL"
-    Features:
-      - MultiAZ: true
-      - ReadReplicas: 3
-      - GlobalDatabase: true
-      - Backups: "30 days"
-      
-  CacheLayer:
-    Primary: "Amazon ElastiCache Redis"
-    Configuration:
-      - ClusterMode: true
-      - MultiAZ: true
-      - Encryption: true
-      - BackupEnabled: true
-      
-  NoSQLData:
-    Primary: "Amazon DynamoDB"
-    Features:
-      - OnDemandBilling: true
-      - GlobalTables: true
-      - PointInTimeRecovery: true
-      - StreamsEnabled: true
-      
-  AnalyticsData:
-    Primary: "Amazon Redshift"
-    Features:
-      - NodeType: "ra3.xlplus"
-      - Clusters: 3
-      - S3Integration: true
-      - SpectrumEnabled: true
-```
+**Analytics Domain**
+- **Services**: Analytics Service, Reporting Service, Data Pipeline Service
+- **Database**: DynamoDB with OpenSearch for complex queries
+- **Communication**: Batch processing with Step Functions
+
+#### **Communication Patterns**
+The platform implements multiple communication strategies based on use case requirements:
+
+**Synchronous Communication**
+- **REST APIs**: Standard HTTP/HTTPS for real-time interactions
+- **gRPC**: High-performance service-to-service communication
+- **GraphQL**: Flexible data fetching for frontend applications
+
+**Asynchronous Communication**
+- **Event-Driven**: SQS/SNS for reliable message delivery
+- **Event Sourcing**: DynamoDB Streams for state change tracking
+- **Workflow Orchestration**: Step Functions for complex business processes
+
+### 2. Service Mesh Implementation
+
+The platform uses **Istio Service Mesh** for advanced traffic management, security, and observability:
+
+#### **Traffic Management Features**
+- **Intelligent Load Balancing**: Advanced routing algorithms
+- **Circuit Breaking**: Automatic failure detection and isolation
+- **Traffic Splitting**: Blue-green and canary deployment strategies
+- **Retry Policies**: Configurable retry logic with backoff
+
+#### **Security Features**
+- **Mutual TLS (mTLS)**: Automatic service-to-service encryption
+- **Access Control**: Fine-grained authorization policies
+- **Security Scanning**: Runtime security monitoring
+- **Certificate Management**: Automatic certificate rotation
+
+#### **Observability Features**
+- **Distributed Tracing**: Complete request flow visibility
+- **Metrics Collection**: Comprehensive service metrics
+- **Access Logging**: Detailed traffic analysis
+- **Service Topology**: Visual service dependency mapping
+
+### 3. Data Architecture Strategy
+
+#### **Multi-Database Approach**
+The platform implements a polyglot persistence strategy, selecting the optimal database technology for each use case:
+
+**Relational Data Storage**
+- **Technology**: Amazon Aurora PostgreSQL
+- **Use Cases**: Transactional data, user accounts, order processing
+- **Features**: Multi-AZ deployment, automated backups, read replicas
+- **High Availability**: Global database for cross-region replication
+
+**Caching Layer**
+- **Technology**: Amazon ElastiCache Redis
+- **Use Cases**: Session storage, API response caching, real-time analytics
+- **Features**: Cluster mode, encryption, automatic failover
+- **Performance**: Sub-millisecond latency for hot data
+
+**NoSQL Data Storage**
+- **Technology**: Amazon DynamoDB
+- **Use Cases**: User profiles, product catalogs, IoT data
+- **Features**: On-demand scaling, global tables, point-in-time recovery
+- **Scalability**: Automatic scaling based on traffic patterns
+
+**Analytics and Data Warehousing**
+- **Technology**: Amazon Redshift
+- **Use Cases**: Business intelligence, reporting, data analytics
+- **Features**: Columnar storage, parallel processing, Spectrum integration
+- **Performance**: Petabyte-scale data analysis capabilities
+
+#### **Data Consistency and Transactions**
+The platform handles data consistency through multiple patterns:
+
+**Strong Consistency**
+- **ACID Transactions**: Aurora PostgreSQL for critical business operations
+- **Synchronous Replication**: Real-time data synchronization
+- **Distributed Transactions**: Two-phase commit where necessary
+
+**Eventual Consistency**
+- **Event Sourcing**: DynamoDB Streams for state change propagation
+- **Saga Pattern**: Step Functions for distributed transaction management
+- **Conflict Resolution**: Last-writer-wins with version control
 
 ## Platform Services
 
-### 1. Developer Platform (IdP)
+### 1. Developer Platform (Internal Developer Platform - IdP)
 
-#### Self-Service Capabilities
-```yaml
-DeveloperPlatform:
-  GitOps:
-    Tool: "ArgoCD"
-    Features:
-      - MultiCluster: true
-      - RBAC: true
-      - SyncPolicies: "Automated"
-      - Webhooks: true
-      
-  CI/CD:
-    Pipelines:
-      - Orchestration: "Jenkins on EKS"
-      - Build: "Jenkins + AWS CodeBuild"
-      - Test: "Automated testing"
-      - Security: "SAST/DAST scanning"
-      - Deploy: "ArgoCD"
-      - Integration: "Jenkins-ArgoCD automation"
-      
-  Infrastructure:
-    ProvisioningTool: "Terraform/OpenTofu"
-    Modules:
-      - EKS: "Standard cluster setup"
-      - Database: "RDS provisioning"
-      - Monitoring: "Observability stack"
-      - Security: "Security baseline"
-      
-  DeveloperExperience:
-    CLI: "Platform CLI tool"
-    Dashboard: "Web-based self-service portal"
-    Documentation: "Auto-generated API docs"
-    Templates: "Service templates and examples"
-```
+#### **Self-Service Capabilities**
+The platform provides comprehensive self-service capabilities to empower development teams:
+
+**GitOps Workflow**
+- **Tool**: ArgoCD for declarative deployments
+- **Features**: Multi-cluster management, RBAC integration, automated sync
+- **Benefits**: Faster deployments, better compliance, reduced operational overhead
+
+**CI/CD Pipeline**
+- **Orchestration**: Jenkins running on EKS for scalability
+- **Build Process**: AWS CodeBuild for containerized builds
+- **Testing**: Automated unit, integration, and security testing
+- **Deployment**: ArgoCD for Kubernetes deployments
+- **Integration**: Seamless Jenkins-ArgoCD automation
+
+**Infrastructure Provisioning**
+- **Tool**: Terraform/OpenTofu for infrastructure as code
+- **Standard Modules**: Pre-built modules for common patterns
+- **Self-Service**: Developer portal for infrastructure requests
+- **Compliance**: Built-in security and compliance policies
+
+**Developer Experience**
+- **CLI Tools**: Custom platform CLI for common operations
+- **Web Dashboard**: Self-service portal for all platform services
+- **Documentation**: Auto-generated API documentation and guides
+- **Templates**: Service templates and best practice examples
 
 ### 2. Observability Platform
 
-#### Monitoring and Logging
-```yaml
-ObservabilityPlatform:
-  Metrics:
-    Collection: "Prometheus"
-    Storage: "Amazon Managed Prometheus"
-    Visualization: "Amazon Managed Grafana"
-    Alerting: "AlertManager + PagerDuty"
-    
-  Logging:
-    Collection: "Fluent Bit"
-    Storage: "Amazon OpenSearch"
-    Analysis: "Kibana dashboards"
-    Retention: "30 days hot, 1 year warm"
-    
-  Tracing:
-    Tool: "AWS X-Ray"
-    Instrumentation: "OpenTelemetry"
-    SamplingRate: "10%"
-    
-  SLA/SLO:
-    Availability: "99.9%"
-    Latency: "P95 < 200ms"
-    ErrorRate: "< 0.1%"
-```
+#### **Comprehensive Monitoring Strategy**
+The platform implements a multi-layered observability approach:
+
+**Metrics Collection and Analysis**
+- **Collection**: Prometheus for Kubernetes metrics
+- **Storage**: Amazon Managed Prometheus for scalability
+- **Visualization**: Amazon Managed Grafana for dashboards
+- **Alerting**: AlertManager integrated with PagerDuty for incident response
+
+**Centralized Logging**
+- **Collection**: Fluent Bit for log aggregation
+- **Storage**: Amazon OpenSearch Service for log storage and analysis
+- **Analysis**: Kibana dashboards for log exploration
+- **Retention**: Tiered storage with hot (30 days) and warm (1 year) data
+
+**Distributed Tracing**
+- **Technology**: AWS X-Ray for distributed tracing
+- **Instrumentation**: OpenTelemetry for vendor-neutral observability
+- **Sampling**: Intelligent sampling to reduce costs
+- **Analysis**: End-to-end request flow visualization
+
+**Third-Party Integration**
+- **Platform**: Datadog for centralized monitoring and alerting
+- **Features**: Infrastructure monitoring, APM, log management
+- **Benefits**: Unified view across AWS services and applications
+- **Integration**: Native AWS service integration for complete visibility
+
+#### **Service Level Objectives (SLOs)**
+The platform maintains strict performance and reliability targets:
+
+**Availability Targets**
+- **Platform Availability**: 99.9% uptime
+- **Application Response Time**: P95 latency under 200ms
+- **Error Rate**: Less than 0.1% for critical services
+- **Recovery Time**: Mean time to recovery (MTTR) under 15 minutes
 
 ## Security Architecture Integration
 
-### 1. Zero Trust Implementation
+### 1. Zero Trust Security Implementation
 
-#### Security Layers
-```yaml
-ZeroTrustSecurity:
-  IdentityLayer:
-    - IAM Identity Center
-    - MFA enforcement
-    - RBAC policies
-    - Service accounts (IRSA)
-    
-  NetworkLayer:
-    - VPC isolation
-    - Security groups
-    - Network ACLs
-    - Private subnets only
-    
-  ApplicationLayer:
-    - Service mesh mTLS
-    - Container security scanning
-    - Runtime protection
-    - API gateway authentication
-    
-  DataLayer:
-    - Encryption at rest
-    - Encryption in transit
-    - Secrets management
-    - Data classification
-```
+#### **Comprehensive Security Layers**
+The platform implements defense-in-depth security across all architectural layers:
 
-### 2. Compliance Framework
+**Identity and Access Management**
+- **AWS IAM Identity Center**: Centralized identity management
+- **Multi-Factor Authentication**: Mandatory MFA for all access
+- **Role-Based Access Control**: Least privilege access principles
+- **Service Account Security**: EKS IRSA for secure pod-to-AWS communication
 
-#### Standards Adherence
-```yaml
-ComplianceFramework:
-  Standards:
-    - SOC2: "Type II"
-    - ISO27001: "Certified"
-    - PCI-DSS: "Level 1"
-    - GDPR: "Compliant"
-    
-  Controls:
-    - AccessControl: "Least privilege"
-    - DataProtection: "Encryption everywhere"
-    - Monitoring: "24/7 SOC"
-    - AuditTrail: "Complete logging"
-    
-  Automation:
-    - ComplianceAsCode: "AWS Config rules"
-    - ContinuousMonitoring: "Security Hub"
-    - IncidentResponse: "Automated playbooks"
-```
+**Network Security**
+- **VPC Isolation**: Complete network segmentation
+- **Private Subnets**: All workloads in private networks
+- **Security Groups**: Micro-segmentation with specific rules
+- **Network ACLs**: Additional subnet-level protection
+
+**Application Security**
+- **Service Mesh mTLS**: Automatic service-to-service encryption
+- **Container Security**: Runtime protection and vulnerability scanning
+- **API Gateway Security**: Authentication and rate limiting
+- **Web Application Firewall**: Protection against common attacks
+
+**Data Security**
+- **Encryption at Rest**: All data encrypted using AWS KMS
+- **Encryption in Transit**: TLS 1.3 for all communications
+- **Secrets Management**: AWS Secrets Manager for credential storage
+- **Data Classification**: Automated data discovery and protection
+
+### 2. Compliance and Governance
+
+#### **Regulatory Compliance**
+The platform maintains compliance with multiple industry standards:
+
+**Compliance Standards**
+- **SOC 2 Type II**: Comprehensive security controls audit
+- **ISO 27001**: Information security management certification
+- **PCI DSS Level 1**: Payment card industry data security
+- **GDPR**: European data protection regulation compliance
+
+**Continuous Compliance**
+- **AWS Config**: Automated compliance rule monitoring
+- **Security Hub**: Centralized security findings management
+- **CloudTrail**: Complete API activity audit trail
+- **Automated Remediation**: Instant response to compliance violations
+
+**Governance Framework**
+- **Security Policies**: Comprehensive security policy enforcement
+- **Change Management**: Controlled and audited changes
+- **Risk Assessment**: Regular security risk evaluations
+- **Incident Response**: Automated incident detection and response
 
 ## Disaster Recovery and Business Continuity
 
-### 1. Multi-Region Strategy
+### 1. Multi-Region Active-Active Strategy
 
-#### Active-Active Configuration
-```yaml
-DisasterRecovery:
-  Architecture: "Active-Active"
-  
-  Regions:
-    Primary:
-      Region: "us-east-1"
-      Traffic: "70%"
-      Capacity: "Full"
-      
-    Secondary:
-      Region: "us-west-2"
-      Traffic: "30%"
-      Capacity: "Full"
-      
-  DataReplication:
-    Database:
-      Type: "Aurora Global Database"
-      RPO: "< 1 second"
-      RTO: "< 1 minute"
-      
-    Storage:
-      Type: "S3 Cross-Region Replication"
-      Mode: "Real-time"
-      
-  TrafficManagement:
-    DNS: "Route 53 health checks"
-    Failover: "Automatic"
-    HealthChecks: "Multi-point"
-```
+#### **Comprehensive Regional Resilience**
+The platform implements a robust multi-region strategy ensuring zero-downtime operations:
 
-### 2. Backup Strategy
+**Regional Distribution Strategy**
+- **Primary Region (US-East-1)**: Handles 70% of production traffic
+- **Secondary Region (US-West-2)**: Handles 30% of production traffic  
+- **Automatic Load Distribution**: Intelligent traffic routing based on health
+- **Instant Failover**: Seamless regional failover in under 30 seconds
 
-#### Comprehensive Backup Plan
-```yaml
-BackupStrategy:
-  Databases:
-    Aurora:
-      Frequency: "Continuous"
-      Retention: "35 days"
-      CrossRegion: true
-      
-  Applications:
-    EKS:
-      Tool: "Velero"
-      Frequency: "Daily"
-      Scope: "Namespace-based"
-      
-  Infrastructure:
-    IaC:
-      Storage: "Git repositories"
-      Versioning: "Git tags"
-      Backup: "Multiple remotes"
-```
+**Traffic Management and Failover**
+- **DNS-Based Routing**: Route 53 health checks with automatic failover
+- **CloudFront Distribution**: Global edge locations with origin failover
+- **Application Load Balancer**: Regional traffic distribution with health monitoring
+- **Health Check Strategy**: Multi-point health validation across regions
+
+**Data Synchronization Strategy**
+- **Aurora Global Database**: Sub-second cross-region replication
+- **DynamoDB Global Tables**: Active-active multi-region tables
+- **S3 Cross-Region Replication**: Real-time object synchronization
+- **ElastiCache Global Datastore**: Cross-region cache synchronization
+
+### 2. Comprehensive Backup and Recovery
+
+#### **Multi-Tier Backup Strategy**
+The platform implements comprehensive backup and recovery procedures:
+
+**Database Backup Strategy**
+- **Aurora Continuous Backup**: Point-in-time recovery with 1-second granularity
+- **Cross-Region Backup**: Automated backup replication to secondary region
+- **Backup Retention**: 35 days for compliance and operational recovery
+- **Backup Testing**: Monthly automated backup restoration testing
+
+**Application and Infrastructure Backup**
+- **Kubernetes Backup**: Velero for complete cluster state backup
+- **Namespace-Level Recovery**: Granular application recovery capabilities
+- **Infrastructure as Code**: Git-based versioning for complete infrastructure state
+- **Configuration Backup**: Automated backup of all platform configurations
+
+**Recovery Testing and Validation**
+- **Monthly DR Tests**: Complete disaster recovery simulation
+- **Automated Recovery**: Scripted recovery procedures for faster restoration
+- **Recovery Validation**: Automated testing of recovered environments
+- **Documentation**: Comprehensive runbooks for all recovery scenarios
+
+### 3. Regional Architecture Details
+
+#### **Per-Region Infrastructure Design**
+
+![Regional Architecture Diagram](https://drive.google.com/uc?export=view&id=REGIONAL_ARCH_DIAGRAM_ID)
+
+*Figure 3: Detailed Regional Architecture with Multi-AZ Design*
+
+**Production VPC Architecture (Per Region)**
+- **Three Availability Zones**: Maximum resilience within each region
+- **Multi-Tier Subnets**: Public, private, and database subnet tiers
+- **EKS Worker Nodes**: Distributed across all availability zones
+- **Database Deployment**: Aurora cluster with cross-AZ replicas
+
+**Shared Services VPC Architecture (Per Region)**
+- **Monitoring and Observability**: CloudWatch, Datadog, and logging infrastructure
+- **CI/CD Platform**: Jenkins and ArgoCD for deployment automation
+- **Security Services**: Centralized security monitoring and incident response
+- **Network Services**: VPC endpoints, NAT gateways, and transit gateway connectivity
+
+**Cross-Region Connectivity**
+- **VPC Peering**: Secure inter-region communication
+- **Transit Gateway**: Hub-and-spoke network architecture
+- **Direct Connect**: Dedicated network connection to on-premises
+- **VPN Connectivity**: Secure backup connectivity for hybrid scenarios
 
 ## Cost Optimization Strategy
 
-### 1. Resource Optimization
+### 1. Intelligent Resource Management
 
-#### Cost Control Measures
-```yaml
-CostOptimization:
-  Compute:
-    - SpotInstances: "Up to 70% savings"
-    - RightSizing: "Continuous monitoring"
-    - Scheduling: "Dev environment shutdown"
-    
-  Storage:
-    - S3IntelligentTiering: "Automatic optimization"
-    - EBSOptimization: "gp3 volumes"
-    - LifecyclePolicies: "Automated archiving"
-    
-  Networking:
-    - VPCEndpoints: "Reduce NAT costs"
-    - CloudFront: "Reduce origin load"
-    - DirectConnect: "Predictable costs"
-    
-  Monitoring:
-    - CostExplorer: "Daily monitoring"
-    - Budgets: "Proactive alerts"
-    - Tagging: "Resource attribution"
-```
+#### **Multi-Layered Cost Optimization**
+The platform implements comprehensive cost optimization across all infrastructure layers:
+
+**Compute Cost Optimization**
+- **Spot Instances**: Up to 70% savings for fault-tolerant workloads
+- **Right-Sizing**: Continuous monitoring and automatic resource adjustment
+- **Auto-Scaling**: Dynamic scaling based on demand patterns
+- **Development Environment Scheduling**: Automatic shutdown during off-hours
+
+**Storage Cost Optimization**
+- **S3 Intelligent Tiering**: Automatic data lifecycle management
+- **EBS Volume Optimization**: gp3 volumes for better price-performance
+- **Database Optimization**: Aurora Serverless for variable workloads
+- **Backup Lifecycle**: Automated archiving to reduce storage costs
+
+**Network Cost Optimization**
+- **VPC Endpoints**: Eliminate NAT gateway costs for AWS services
+- **CloudFront**: Reduce origin server load and data transfer costs
+- **Direct Connect**: Predictable networking costs for high-volume traffic
+- **Regional Optimization**: Optimal region selection for cost and performance
+
+### 2. Cost Monitoring and Governance
+
+#### **Proactive Cost Management**
+The platform provides comprehensive cost visibility and control mechanisms:
+
+**Cost Monitoring Tools**
+- **AWS Cost Explorer**: Daily cost monitoring and analysis
+- **Budget Alerts**: Proactive notifications for cost thresholds
+- **Cost Allocation Tags**: Detailed cost attribution by service and team
+- **Reserved Instance Optimization**: Strategic commitment for predictable workloads
+
+**Cost Governance Framework**
+- **Spending Policies**: Automated enforcement of spending limits
+- **Resource Quotas**: Team-based resource allocation and monitoring
+- **Cost Reviews**: Regular cost optimization reviews and recommendations
+- **Optimization Automation**: Automated implementation of cost-saving recommendations
+
+## Visual Architecture References
+
+### **Recommended Draw.io Diagrams**
+
+To complement this documentation, the following visual diagrams should be created using Draw.io:
+
+#### **1. Multi-Region Disaster Recovery Diagram**
+- **Global traffic flow** from users through CloudFront and Route 53
+- **Primary and secondary regions** with detailed VPC layouts
+- **Cross-region replication** connections between services
+- **Failover paths** and traffic rerouting mechanisms
+
+#### **2. Regional Architecture Detail Diagram**
+- **Multi-AZ deployment** within each region
+- **VPC structure** with public, private, and database subnets
+- **EKS cluster layout** across availability zones
+- **Load balancer distribution** and traffic flow
+
+#### **3. Data Flow and Replication Diagram**
+- **Database replication** patterns between regions
+- **Application data flow** through the platform layers
+- **Backup and recovery** data paths
+- **Cross-region synchronization** mechanisms
+
+#### **4. Security Architecture Diagram**
+- **Zero-trust security layers** throughout the platform
+- **Network segmentation** and security group boundaries
+- **Identity and access management** flow
+- **Encryption points** for data at rest and in transit
+
+These visual diagrams will provide clear, easy-to-understand representations of the complex multi-region architecture, making it accessible to both technical and non-technical stakeholders.
 
 ## Implementation Phases
 
