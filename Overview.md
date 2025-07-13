@@ -1,121 +1,80 @@
-# Deploying Microservice Applications on Amazon EKS via a CI/CD Pipeline
+# Deploy Microservices with CI/CD and Multi-Region DR on Amazon EKS
 
 _Venkatesh Dhanapalraj_
 
 ---
 
-## Table of Contents
-
-1. [Introduction](#introduction)  
-2. [Architecture Diagram](#architecture-diagram)  
-3. [Key Components](#key-components)  
-4. [Workflow Overview](#workflow-overview)  
-5. [Networking & Security](#networking--security)  
-6. [Scalability & High Availability](#scalability--high-availability)  
-7. [Monitoring & Logging](#monitoring--logging)  
-8. [Getting Started](#getting-started)  
-9. [Future Enhancements](#future-enhancements)  
-10. [License](#license)  
-
----
-
 ## Introduction
 
-This document describes a robust, multi-stage CI/CD pipeline for deploying containerized microservices to Amazon EKS across multiple Availability Zones. The solution leverages Terraform for infra provisioning, GitHub for source control, and Jenkins for build, test, and deploy automation. It’s designed for high availability, security, and observability.
+This guide shows how we build, run, and protect our microservices on AWS:
+
+1. **CI/CD** with GitHub, Jenkins & Terraform  
+2. **Kubernetes** on EKS in two regions (Active/Passive)  
+3. **Auto-failover** for AZ or region outages  
+4. **Monitoring & Alerts** via Datadog and AWS CloudWatch → EventBridge → SNS  
 
 ---
 
 ## Architecture Diagram
 
-![Deploy Microservice Applications Using CICD Pipeline](https://drive.google.com/uc?export=view&id=11fz_JL3OmFHR-QG-baWkUPTGy2J8vXcN)
-
-> **Figure:** High-level architecture for CI/CD-driven microservice deployment on AWS EKS.
+![CI/CD + Multi-Region DR on Amazon EKS](https://drive.google.com/file/d/1_lRYV3n9Hg3ytL_Nvz2_aPqS1YWIhox-/view?usp=drive_link)
 
 ---
 
-## Key Components
+## 1. CI/CD Pipeline
 
-| Layer                | Service / Tool           | Purpose                                                                 |
-|----------------------|--------------------------|-------------------------------------------------------------------------|
-| **Source Control**   | GitHub                   | Hosts application code and Terraform configuration.                     |
-| **CI/CD**            | Jenkins                  | Automates build, test, and deploy stages.                               |
-| **Infrastructure**   | Terraform                | Provision VPC, subnets, EKS cluster, ALBs, RDS, DynamoDB, IAM, etc.     |
-| **Edge & Delivery**  | Route 53, CloudFront     | DNS routing, CDN caching for static assets in S3.                       |
-| **Load Balancing**   | Application Load Balancer| Distributes traffic to frontend and backend services.                   |
-| **Compute**          | Amazon EKS               | Managed Kubernetes for container orchestration.                         |
-| **Data Stores**      | Amazon RDS, DynamoDB     | Relational and NoSQL databases with cross-AZ replication.               |
-| **Security**         | Security Groups, Secrets | Network isolation; AWS Secrets Manager for sensitive credentials.       |
-| **Monitoring**       | CloudWatch               | Collects metrics, logs, and sets up alarms for proactive alerting.      |
+- **GitHub**: code & Terraform configs  
+- **Jenkins**: build → test → deploy  
+- **Terraform**: provisions VPC, EKS clusters, databases in both regions  
 
 ---
 
-## Workflow Overview
+## 2. Kubernetes & Compute
 
-1. **Commit & Push**  
-   Developers push code and Terraform HCL to GitHub.
-
-2. **Terraform Apply**  
-   Jenkins triggers a Terraform job to provision or update AWS resources.
-
-3. **Build & Test**  
-   - **Build Stage**: Container images are built and tagged.  
-   - **Test Stage**: Unit, integration, and security tests run.  
-
-4. **Deploy to EKS**  
-   - **Deploy Stage**: Images are pushed to ECR and Kubernetes manifests (or Helm charts) are applied to the EKS cluster.  
-   - **Rolling Update**: Ensures zero-downtime deployments across node groups.
-
-5. **Traffic Routing**  
-   Route 53 directs client requests to CloudFront; CloudFront caches static assets from S3. ALB distributes API traffic to EKS pods.
-
-6. **Data Synchronization**  
-   RDS instances replicate across AZs; DynamoDB provides a globally available key-value store.
-
-7. **Monitoring & Alerts**  
-   CloudWatch collects metrics and logs; alarms notify on threshold breaches.
+- **Amazon EKS**: spans ≥2 AZs per region  
+- **Auto Scaling Groups**: keeps enough worker nodes  
+- **AWS Fargate**: serverless pods for bursts  
 
 ---
 
-## Networking & Security
+## 3. Networking & Traffic
 
-- **VPC Configuration**  
-  - Public Subnets (`10.0.1.0/24`) host the ALB and NAT gateways.  
-  - Private Subnets (`10.0.2.0/24`) host EKS worker nodes and databases.  
-
-- **Secure Access**  
-  - Jump server in public subnet for bastion access.  
-  - Kubernetes RBAC and IAM roles scoped per service.  
-  - Secrets Manager for database credentials and API keys.
+- **VPC**: public + private subnets  
+- **ALB & NLB**: balanced traffic at layer-7 and layer-4  
+- **Route 53**: health-check DNS failover between regions  
+- **CloudFront & S3**: global cache for static assets  
 
 ---
 
-## Scalability & High Availability
+## 4. Data & Storage
 
-- **Auto Scaling Groups**  
-  Worker nodes scale across ≥2 AZs for fault tolerance.
-
-- **Stateless Services**  
-  Horizontal Pod Autoscaler (HPA) adapts to traffic patterns.
-
-- **Stateful Data**  
-  RDS Multi-AZ and DynamoDB global tables ensure data durability.
+- **RDS Multi-AZ**: primary + standby in each region  
+- **Aurora Global DB**: cross-region read replicas  
+- **DynamoDB Global Tables**: multi-region NoSQL  
+- **S3**: durable object storage with cross-region replication  
 
 ---
 
-## Monitoring & Logging
+## 5. Monitoring & Alerts
 
-- **Metrics**  
-  - EKS cluster health, pod CPU/memory, ALB request count, RDS CPU, DynamoDB throughput  
-- **Logs**  
-  - Application logs aggregated via Fluentd to CloudWatch Logs.  
-- **Alerts**  
-  - Proactive notifications for CPU, memory, HTTP 5xx errors, and database failover events.
+- **Datadog**: app logs & metrics across regions  
+- **CloudWatch**: AWS infra metrics & logs  
+- **EventBridge → SNS**: routes alarms to email/SMS  
 
 ---
 
-## Getting Started
+## 6. Security & Access
 
-1. **Clone Repository**  
-   ```bash
-   git clone https://github.com/your-org/your-repo.git
-   cd your-repo
+- **MFA & STS**: multi-factor and short-lived tokens  
+- **IAM Access Analyzer**: detects wide permissions  
+- **WAF & Shield**: blocks web attacks and DDoS  
+
+---
+
+## 7. Disaster Recovery
+
+- **Active/Passive Regions**: primary serves traffic; secondary stands by  
+- **Route 53 Failover**: automatic DNS switch on primary failure  
+- **Immutable Infra**: Terraform code can rebuild anywhere  
+
+---

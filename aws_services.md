@@ -1,13 +1,27 @@
-# AWS Platform Design Overview
+# Deploy Microservices with CI/CD and Multi-Region DR on Amazon EKS
 
-This document lists the AWS services we will use to build a highly available, fault-tolerant platform. It’s written in simple, everyday language so it’s easy to share with customers and architects.
+This document details the AWS services we use to build a highly available, fault-tolerant microservices platform with CI/CD and multi-region disaster recovery.
 
+---
+
+## 1. CI/CD Pipeline
+
+- **GitHub**  
+  Stores source code and Terraform infrastructure configurations.
+
+- **Jenkins**  
+  Orchestrates build → test → deploy workflows. Runs on EKS for scalability.
+
+- **Terraform**  
+  Provisions VPC, EKS clusters, databases, and all infrastructure in both regions.m Design Overview
+
+This document lists the AWS services we will use to build a highly available, fault-tolerant platform. 
 ---
 
 ## 1. Identity & Access
 
 - **AWS SSO (IAM Identity Center)**  
-  Single place for everyone to log in. Works with our company SAML or OIDC.
+  Single place for everyone to log in. Works with our company  OIDC (OpenID Connect).
 
 - **IAM & STS**  
   - Create roles for each job (e.g. “DevOps Engineer,” “Auditor”).  
@@ -15,113 +29,87 @@ This document lists the AWS services we will use to build a highly available, fa
 
 ---
 
-## 2. Compute & Containers
+## 2. Kubernetes & Compute
 
-- **Amazon EKS (Kubernetes)**  
-  Runs our containers in multiple Availability Zones. If one AZ or node fails, pods restart elsewhere.
+- **Amazon EKS**  
+  Managed Kubernetes spanning multiple Availability Zones per region.
 
-- **EC2 Auto Scaling**  
-  Adds or removes worker nodes automatically based on load.
+- **Auto Scaling Groups**  
+  Automatically maintains sufficient worker nodes based on demand.
 
 - **AWS Fargate**  
-  Serverless containers. Good for sudden spikes—no EC2 to manage.
+  Serverless containers for handling traffic bursts without pre-provisioning.
 
 ---
 
 ## 3. Networking & Traffic
 
-- **Amazon VPC**  
-  Isolates resources in public and private subnets.
+- **VPC**  
+  Network isolation with public and private subnets across multiple AZs.
 
-- **Elastic Load Balancers (ALB/NLB)**  
-  Distributes traffic evenly across healthy nodes.
+- **ALB & NLB**  
+  Application and Network Load Balancers for layer-7 and layer-4 traffic distribution.
 
 - **Route 53**  
-  DNS with health checks. Can fail over to another region if needed.
+  DNS with health-check based failover between regions.
+
+- **CloudFront & S3**  
+  Global content delivery network for static assets and caching.
 
 ---
 
 ## 4. Data & Storage
 
 - **RDS Multi-AZ**  
-  Primary database in one AZ, standby in another. Automatic failover on failure.
+  Primary database with standby replica in separate AZ within each region.
 
 - **Aurora Global DB**  
-  Keeps a copy in a second region. Fast promotion if primary region goes down.
+  Cross-region database replication with fast promotion capabilities.
 
 - **DynamoDB Global Tables**  
-  NoSQL data stored in multiple regions at once.
+  Multi-region NoSQL database with automatic cross-region replication.
 
 - **S3**  
-  Durable object store with cross-region replication for backups.
+  Durable object storage with cross-region replication for backups and static content.
 
 ---
 
-## 5. CI/CD & Automation
+## 5. Monitoring & Alerts
 
-- **Jenkins (on EC2 or EKS)**  
-  Runs build and deploy pipelines. Agents scale up or down as needed.
-
-- **AWS CodePipeline**  
-  An alternative AWS-managed option for build, test, deploy.
-
-- **Systems Manager**  
-  Automates routine tasks (patching, run commands).
-
----
-
-## 6. Monitoring & Alerts
+- **Datadog**  
+  Centralized application logs and metrics monitoring across both regions.
 
 - **CloudWatch**  
-  Collects metrics and logs from EC2, EKS, RDS, etc.
+  AWS infrastructure metrics, logs, and native service monitoring.
 
-- **X-Ray**  
-  Traces requests across services to find slow spots.
-
-- **OpenSearch**  
-  Central log search and dashboards.
+- **EventBridge → SNS**  
+  Routes alarms and events to email, SMS, and other notification channels.
 
 ---
 
-## 7. Security & Compliance
+## 6. Security & Access
+
+- **MFA & STS**  
+  Multi-factor authentication and short-lived token-based access.
+
+- **IAM Access Analyzer**  
+  Automatically detects overly broad permissions and access patterns.
 
 - **WAF & Shield**  
-  Protect web apps from common attacks and DDoS.
-
-- **Config & Audit Manager**  
-  Tracks changes and checks against company rules.
-
-- **Secrets Manager**  
-  Stores and automatically rotates passwords and API keys.
-
-- **AWS Backup**  
-  Central backup for databases, file systems, and volumes.
+  Web Application Firewall and DDoS protection for applications and APIs.
 
 ---
 
-## 8. Disaster Recovery
+## 7. Disaster Recovery
 
-- **Multi-Region Setup**  
-  Primary in one region, DR in another. Route 53 switches on failure.
+- **Active/Passive Regions**  
+  Primary region serves traffic while secondary region stands by for failover.
+
+- **Route 53 Failover**  
+  Automatic DNS switch to secondary region on primary failure detection.
 
 - **Immutable Infrastructure**  
-  Everything is code (Terraform). We can rebuild in any region quickly.
-
-- **Cross-Region Pipelines**  
-  Pipelines mirrored in DR region.
-
----
-
-## 9. Scalability Patterns
-
-- **Auto Scaling**  
-  EC2 and EKS grow or shrink based on CPU, memory, or custom metrics.
-
-- **Serverless Bursting**  
-  Lambda or Fargate handle sudden spikes without pre-provisioning.
-
-- **Database Replicas**  
-  RDS read replicas and DynamoDB partitions share the load.
+  Terraform code can rebuild entire infrastructure in any region quickly.
 
 ---
 
@@ -132,5 +120,5 @@ With these services and patterns:
 1. **High Availability** – Survives AZ or region failures.  
 2. **Fast Recovery** – Automatic failover and rebuilds.  
 3. **Elastic Scaling** – Adjusts capacity to the workload.  
-4. **Strong Security** – Least-privilege, encrypted data, and audits.  
+4. **Strong Security** – Multi-factor auth, encryption, and DDoS protection.  
 5. **Easy Management** – Everything defined in code, with repeatable pipelines.

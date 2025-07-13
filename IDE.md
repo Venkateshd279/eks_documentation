@@ -100,9 +100,3 @@ This document outlines the design of an Internal Development Platform that unifi
 
 ---
 
-## Getting Started
-
-1. **Clone the Repo**  
-   ```bash
-   git clone https://github.com/your-org/internal-platform.git
-   cd internal-platform
