@@ -11,6 +11,42 @@ This platform architecture is designed specifically for AWS cloud infrastructure
 - **AWS security best practices** and compliance standards
 - **AWS cost optimization** strategies and tools
 
+## Platform Architecture Diagram
+
+![AWS Platform Architecture](./aws-platform-architecture.drawio.png)
+
+*Figure 1: AWS Enterprise Platform Architecture - Four-Layer Design*
+
+The architecture diagram above illustrates our comprehensive four-layer AWS platform design:
+
+### Layer Breakdown
+
+**🌐 Edge Layer**
+- **Amazon CloudFront**: Global content delivery and edge caching
+- **Amazon Route 53**: DNS management and traffic routing
+- **AWS WAF**: Web application firewall protection
+- **AWS Shield**: DDoS protection and attack mitigation
+
+**🚀 Application Layer**
+- **Amazon EKS**: Kubernetes orchestration for containerized applications
+- **AWS Lambda**: Serverless compute for event-driven workloads
+- **Amazon API Gateway**: API management and routing
+- **Application Load Balancer**: Layer 7 load balancing and routing
+
+**💾 Data Layer**
+- **Amazon RDS**: Managed relational databases (PostgreSQL, MySQL)
+- **Amazon DynamoDB**: NoSQL database for high-performance applications
+- **Amazon S3**: Object storage for data lakes and static content
+- **Amazon ElastiCache**: In-memory caching (Redis/Memcached)
+
+**🔒 Security & Observability Layer**
+- **Amazon CloudWatch**: Comprehensive monitoring and logging
+- **AWS X-Ray**: Distributed tracing and performance analysis
+- **Amazon GuardDuty**: Threat detection and security monitoring
+- **AWS Security Hub**: Centralized security findings management
+
+This layered approach ensures separation of concerns, scalability, and security while maintaining AWS-native integration across all components.
+
 ## Table of Contents
 
 1. [Guiding Principles](./01-guiding-principles.md)
@@ -47,6 +83,13 @@ The AWS-native platform is designed to enable rapid, secure, and reliable deploy
 - **Compute**: Amazon EKS, EC2, Fargate, Lambda
 - **Storage**: Amazon S3, EBS, EFS
 - **Database**: Amazon RDS, DynamoDB, ElastiCache
+
+### Application Layer
+- **API Management**: Amazon API Gateway, AWS AppSync
+- **Serverless Compute**: AWS Lambda, AWS App Runner
+- **Messaging**: Amazon SQS, SNS, EventBridge
+- **Workflow Orchestration**: AWS Step Functions
+- **Authentication**: Amazon Cognito, IAM Identity Center
 
 ### Networking & Content Delivery
 - **Networking**: Amazon VPC, Transit Gateway, Direct Connect

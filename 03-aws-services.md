@@ -370,12 +370,297 @@ APIGateway:
         Uri: "arn:aws:apigateway:region:lambda:path/2015-03-31/functions/arn:aws:lambda:region:account:function:api-handler/invocations"
 ```
 
+## Application Layer Services
+
+### Amazon API Gateway
+**Justification**: Centralized API management and gateway
+- **HTTP/REST APIs**: Support for RESTful and HTTP APIs
+- **WebSocket APIs**: Real-time bidirectional communication
+- **Request/Response Transformation**: Data mapping and transformation
+- **Rate Limiting**: Protect backend services from abuse
+- **API Keys and Usage Plans**: Monetization and access control
+- **Custom Authorizers**: Lambda-based authentication
+- **CloudWatch Integration**: API monitoring and analytics
+
+**Configuration**:
+```yaml
+APIGateway:
+  Type: "HTTP"
+  CustomDomainName:
+    DomainName: "api.company.com"
+    CertificateArn: "${ACMCertificate.Arn}"
+  Throttling:
+    BurstLimit: 5000
+    RateLimit: 10000
+  Authorizers:
+    - Name: "jwt-authorizer"
+      Type: "JWT"
+      JwtConfiguration:
+        Issuer: "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_XXXXXXXXX"
+      IdentitySource: "$request.header.Authorization"
+  Integrations:
+    - Type: "HTTP_PROXY"
+      Uri: "http://internal-alb.company.com/{proxy}"
+      ConnectionType: "VPC_LINK"
+```
+
+### AWS Lambda
+**Justification**: Serverless compute for event-driven workloads
+- **Event-Driven Architecture**: Trigger-based execution
+- **Auto Scaling**: Automatic scaling based on requests
+- **Pay-per-Use**: Cost-effective for sporadic workloads
+- **Multiple Runtime Support**: Support for various programming languages
+- **VPC Integration**: Access to private resources
+- **Dead Letter Queues**: Error handling and retry logic
+
+**Use Cases**:
+```yaml
+LambdaFunctions:
+  APIProcessing:
+    Runtime: "python3.9"
+    Handler: "app.lambda_handler"
+    Timeout: 30
+    Memory: 512
+    Environment:
+      DATABASE_URL: "${RDS.Endpoint}"
+    Events:
+      - APIGateway: "/api/v1/process"
+      
+  DataProcessing:
+    Runtime: "java11"
+    Handler: "com.company.Handler"
+    Timeout: 900
+    Memory: 3008
+    Events:
+      - S3: "data-bucket"
+      - SQS: "processing-queue"
+      
+  EventProcessor:
+    Runtime: "nodejs18.x"
+    Handler: "index.handler"
+    Timeout: 60
+    Memory: 256
+    Events:
+      - EventBridge: "custom-events"
+      - DynamoDB: "user-table"
+```
+
+### Amazon SQS (Simple Queue Service)
+**Justification**: Reliable message queuing for decoupled architecture
+- **Standard Queues**: High throughput, at-least-once delivery
+- **FIFO Queues**: Exactly-once processing, message ordering
+- **Dead Letter Queues**: Handle failed message processing
+- **Message Visibility Timeout**: Prevent duplicate processing
+- **Long Polling**: Reduce empty receives and costs
+- **Encryption**: In-transit and at-rest encryption
+
+**Configuration**:
+```yaml
+SQSQueues:
+  OrderProcessing:
+    Type: "Standard"
+    VisibilityTimeoutSeconds: 300
+    MessageRetentionPeriod: 1209600  # 14 days
+    DeadLetterQueue:
+      TargetArn: "${OrderProcessingDLQ.Arn}"
+      MaxReceiveCount: 3
+    RedrivePolicy:
+      DeadLetterTargetArn: "${OrderProcessingDLQ.Arn}"
+      MaxReceiveCount: 3
+      
+  UserNotifications:
+    Type: "FIFO"
+    FifoQueue: true
+    ContentBasedDeduplication: true
+    DeduplicationScope: "messageGroup"
+    FifoThroughputLimit: "perMessageGroupId"
+```
+
+### Amazon SNS (Simple Notification Service)
+**Justification**: Pub/Sub messaging for fan-out scenarios
+- **Topic-based Messaging**: Publish once, deliver to multiple subscribers
+- **Multiple Protocols**: HTTP/HTTPS, Email, SMS, SQS, Lambda
+- **Message Filtering**: Attribute-based message filtering
+- **Message Ordering**: FIFO topics for ordered delivery
+- **Cross-Region Replication**: Global message distribution
+- **Mobile Push Notifications**: Direct mobile device notifications
+
+**Configuration**:
+```yaml
+SNSTopics:
+  UserEvents:
+    Type: "Standard"
+    DisplayName: "User Events Topic"
+    Subscriptions:
+      - Protocol: "sqs"
+        Endpoint: "${UserEventProcessingQueue.Arn}"
+      - Protocol: "lambda"
+        Endpoint: "${UserEventProcessor.Arn}"
+      - Protocol: "email"
+        Endpoint: "alerts@company.com"
+        FilterPolicy:
+          severity: ["CRITICAL", "HIGH"]
+          
+  OrderNotifications:
+    Type: "FIFO"
+    FifoTopic: true
+    ContentBasedDeduplication: true
+    Subscriptions:
+      - Protocol: "sqs"
+        Endpoint: "${OrderNotificationQueue.Arn}"
+```
+
+### Amazon EventBridge
+**Justification**: Event-driven architecture with custom event buses
+- **Custom Event Buses**: Domain-specific event routing
+- **Event Rules**: Pattern matching and routing
+- **Schema Registry**: Event schema management
+- **Cross-Account Events**: Multi-account event routing
+- **Third-Party Integrations**: SaaS application events
+- **Event Replay**: Replay events for testing or recovery
+
+**Configuration**:
+```yaml
+EventBridge:
+  CustomBuses:
+    - Name: "application-events"
+      Description: "Application domain events"
+      EventSourceName: "com.company.application"
+      
+    - Name: "infrastructure-events"
+      Description: "Infrastructure and system events"
+      EventSourceName: "com.company.infrastructure"
+      
+  Rules:
+    - Name: "user-registration-rule"
+      EventBusName: "application-events"
+      EventPattern:
+        source: ["user-service"]
+        detail-type: ["User Registered"]
+      Targets:
+        - Arn: "${WelcomeEmailLambda.Arn}"
+        - Arn: "${UserAnalyticsQueue.Arn}"
+        - Arn: "${AuditLogTopic.Arn}"
+```
+
+### AWS Step Functions
+**Justification**: Workflow orchestration for complex business processes
+- **State Machines**: Visual workflow definition
+- **Error Handling**: Built-in retry and error handling
+- **Parallel Execution**: Concurrent task execution
+- **Human Approval**: Manual approval steps
+- **Service Integrations**: Direct AWS service integrations
+- **Express Workflows**: High-volume, short-duration workflows
+
+**Configuration**:
+```yaml
+StepFunctions:
+  OrderProcessingWorkflow:
+    Type: "Standard"
+    Definition:
+      Comment: "Order processing workflow"
+      StartAt: "ValidateOrder"
+      States:
+        ValidateOrder:
+          Type: "Task"
+          Resource: "${ValidateOrderLambda.Arn}"
+          Next: "CheckInventory"
+          Retry:
+            - ErrorEquals: ["States.TaskFailed"]
+              IntervalSeconds: 2
+              MaxAttempts: 3
+              BackoffRate: 2.0
+              
+        CheckInventory:
+          Type: "Task"
+          Resource: "${CheckInventoryLambda.Arn}"
+          Next: "ProcessPayment"
+          
+        ProcessPayment:
+          Type: "Task"
+          Resource: "${ProcessPaymentLambda.Arn}"
+          Next: "FulfillOrder"
+          Catch:
+            - ErrorEquals: ["PaymentFailedException"]
+              Next: "PaymentFailed"
+              
+        FulfillOrder:
+          Type: "Task"
+          Resource: "${FulfillOrderLambda.Arn}"
+          End: true
+```
+
+### Amazon Cognito
+**Justification**: User authentication and authorization service
+- **User Pools**: User directory and authentication
+- **Identity Pools**: Federated identity access to AWS resources
+- **Social Identity Providers**: Facebook, Google, Amazon login
+- **SAML/OIDC**: Enterprise identity provider integration
+- **MFA Support**: Multi-factor authentication
+- **Custom Authentication**: Lambda-based custom auth flows
+
+**Configuration**:
+```yaml
+Cognito:
+  UserPool:
+    Name: "platform-users"
+    Policies:
+      PasswordPolicy:
+        MinimumLength: 8
+        RequireUppercase: true
+        RequireLowercase: true
+        RequireNumbers: true
+        RequireSymbols: true
+    MfaConfiguration: "OPTIONAL"
+    MfaTypes: ["SMS_MFA", "SOFTWARE_TOKEN_MFA"]
+    
+  UserPoolClient:
+    Name: "web-app-client"
+    GenerateSecret: false
+    ExplicitAuthFlows:
+      - "ALLOW_USER_PASSWORD_AUTH"
+      - "ALLOW_REFRESH_TOKEN_AUTH"
+      - "ALLOW_USER_SRP_AUTH"
+    ReadAttributes: ["email", "name", "phone_number"]
+    WriteAttributes: ["email", "name", "phone_number"]
+    
+  IdentityPool:
+    Name: "platform-identity-pool"
+    AllowUnauthenticatedIdentities: false
+    CognitoIdentityProviders:
+      - ClientId: "${UserPoolClient.Id}"
+        ProviderName: "${UserPool.ProviderName}"
+```
+
+### Amazon AppSync (Optional)
+**Justification**: GraphQL API with real-time subscriptions
+- **GraphQL Schema**: Strongly typed API schema
+- **Real-time Subscriptions**: WebSocket-based real-time updates
+- **Offline Sync**: Mobile offline data synchronization
+- **Multiple Data Sources**: DynamoDB, Lambda, HTTP APIs
+- **Caching**: Built-in caching capabilities
+- **Fine-grained Authorization**: Field-level security
+
+### AWS App Runner (Optional)
+**Justification**: Simplified container deployment for web applications
+- **Source-to-Running**: Direct deployment from source code
+- **Auto Scaling**: Automatic scaling based on traffic
+- **Load Balancing**: Built-in load balancing
+- **Health Checks**: Application health monitoring
+- **Custom Domains**: Custom domain support
+- **VPC Connectivity**: Connect to VPC resources
+```
+
 ## Service Selection Rationale Summary
 
 | Service Category | Selected Service | Alternative Considered | Selection Reason |
 |------------------|------------------|------------------------|------------------|
 | Container Orchestration | Amazon EKS | Self-managed K8s, ECS | Managed control plane, ecosystem |
 | Database | RDS + DynamoDB | Self-managed, DocumentDB | Managed service, proven reliability |
+| Application Layer | API Gateway + Lambda | Kong, Express.js on EC2 | Serverless, auto-scaling, AWS integration |
+| Messaging | SQS + SNS + EventBridge | Apache Kafka, RabbitMQ | Managed service, event-driven architecture |
+| Workflow Orchestration | AWS Step Functions | Apache Airflow, Temporal | Visual workflows, AWS service integration |
+| Authentication | Amazon Cognito | Auth0, Okta | AWS-native, cost-effective, scalable |
 | Monitoring | CloudWatch + Prometheus | DataDog, New Relic | Cost efficiency, AWS integration |
 | CI/CD | Jenkins + ArgoCD | AWS CodePipeline, GitLab CI | Flexibility, plugin ecosystem, Kubernetes-native |
 | Security | Native AWS Services | Third-party SIEM | Integration, compliance |
