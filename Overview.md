@@ -17,7 +17,7 @@ This guide shows how we build, run, and protect our microservices on AWS:
 
 ## Architecture Diagram
 
-![CI/CD + Multi-Region DR on Amazon EKS](https://drive.google.com/file/d/1_lRYV3n9Hg3ytL_Nvz2_aPqS1YWIhox-/view?usp=drive_link)
+![CI/CD + Multi-Region DR on Amazon EKS](https://drive.google.com/uc?export=view&id=1_lRYV3n9Hg3ytL_Nvz2_aPqS1YWIhox-)
 
 ---
 
