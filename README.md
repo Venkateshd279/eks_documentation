@@ -13,7 +13,7 @@ This platform architecture is designed specifically for AWS cloud infrastructure
 
 ## Platform Architecture Diagram
 
-![AWS Platform Architecture](./aws-platform-architecture.drawio.png)
+![AWS Platform Architecture](https://drive.google.com/uc?export=view&id=1AkDf80k9gGUKlxn9tzMONjdmkHlgBbEo)
 
 *Figure 1: AWS Enterprise Platform Architecture - Four-Layer Design*
 
