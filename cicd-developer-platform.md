@@ -6,7 +6,7 @@ This document details the CI/CD pipeline and developer platform that supports ou
 
 ## Architecture Overview
 
-![CI/CD and Developer Platform](https://drive.google.com/uc?export=view&id=CICD_PLATFORM_DIAGRAM_ID)
+![CI/CD and Developer Platform](https://drive.google.com/uc?export=view&id=1GJZSyboV7EyaL4qZlWPuaDRb1uipPwec)
 
 *Figure 1: Complete CI/CD Pipeline with GitOps and Multi-Region Deployment*
 
