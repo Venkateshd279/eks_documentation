@@ -65,22 +65,6 @@ Security isn't bolted on - it's built into everything:
 - Web firewall blocks malicious traffic
 - All data encrypted and access logged
 
-## What's Inside This Project
-
-📋 **[Overview](./01.Overview.md)** - Quick summary of the whole system
-
-🏗️ **[AWS Services](./03.aws_services.md)** - Which AWS tools we use and why
-
-🌐 **[Networking](./05.networking.md)** - How traffic flows securely between components
-
-📈 **[Scaling](./04.scalability.md)** - How the system grows and shrinks automatically
-
-🔒 **[Security & Access Management](./06.security-access-management.md)** - How we keep everything secure
-
-🚀 **[CI/CD Pipeline](./cicd-developer-platform.md)** - How code gets from developers to users
-
-⚙️ **[Access Management](./02.access_and_service_management.md)** - User roles and permissions
-
 ## Key Technologies
 
 **Core Platform:**
