@@ -69,17 +69,17 @@ Security isn't bolted on - it's built into everything:
 
 📋 **[Overview](./01.Overview.md)** - Quick summary of the whole system
 
-🏗️ **[AWS Services](./aws_services.md)** - Which AWS tools we use and why
+🏗️ **[AWS Services](./03.aws_services.md)** - Which AWS tools we use and why
 
-🌐 **[Networking](./networking.md)** - How traffic flows securely between components
+🌐 **[Networking](./05.networking.md)** - How traffic flows securely between components
 
-📈 **[Scaling](./scalability.md)** - How the system grows and shrinks automatically
+📈 **[Scaling](./04.scalability.md)** - How the system grows and shrinks automatically
 
-🔒 **[Security](./security-access-management.md)** - How we keep everything secure
+🔒 **[Security & Access Management](./06.security-access-management.md)** - How we keep everything secure
 
 🚀 **[CI/CD Pipeline](./cicd-developer-platform.md)** - How code gets from developers to users
 
-🏛️ **[Architecture Details](./07-architecture-overview.md)** - Deep technical specifications
+⚙️ **[Access Management](./02.access_and_service_management.md)** - User roles and permissions
 
 ## Key Technologies
 
@@ -105,8 +105,8 @@ Security isn't bolted on - it's built into everything:
 Want to understand how this works? Start here:
 
 1. **Read the [Overview](./01.Overview.md)** - Get the big picture in 5 minutes
-2. **Check out [AWS Services](./aws_services.md)** - See what each piece does
-3. **Dive into [Architecture Details](./07-architecture-overview.md)** - Technical deep dive
+2. **Check out [AWS Services](./03.aws_services.md)** - See what each piece does
+3. **Dive into [Architecture Details](./01.Overview.md)** - Technical deep dive
 
 Want to build something similar? The documentation includes:
 - Step-by-step implementation guides
