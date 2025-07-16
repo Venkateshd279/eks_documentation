@@ -1,111 +1,76 @@
-# Building a Reliable Cloud Platform on AWS
+# EKS Platform Documentation
 
-This project shows how we built a modern platform for running web applications that can handle failures and keep running smoothly.
+Simple guide for building and running applications on Amazon EKS with automated deployments.
 
-## What We Built
+## Requirements
 
-Think of this as a blueprint for creating a robust system that:
-- Automatically deploys code changes safely
-- Runs applications across multiple data centers 
-- Switches to backup systems if something breaks
-- Monitors everything and alerts us when issues happen
-- Keeps data safe and secure
+### **Functional Requirements (What It Does)**
+- **Code Deployment**: Automatically build, test, and deploy applications from GitHub
+- **Container Management**: Run applications in Docker containers on Kubernetes
+- **User Access Control**: Manage who can access what parts of the platform
+- **Infrastructure Provisioning**: Create and manage AWS resources with Terraform
+- **Monitoring & Alerting**: Track application health and send notifications
+- **Secret Management**: Securely store and distribute passwords and API keys
 
-![Platform Architecture](https://drive.google.com/uc?export=view&id=1AkDf80k9gGUKlxn9tzMONjdmkHlgBbEo)
+### **Non-Functional Requirements (How Well It Works)**
+- **Availability**: 99.9% uptime with multi-zone deployment
+- **Scalability**: Auto-scale from 2 to 50+ pods based on demand
+- **Performance**: Deploy new code in under 5 minutes
+- **Security**: Multi-factor authentication and automatic vulnerability scanning
+- **Reliability**: Zero-downtime deployments with automatic rollback on failure
+- **Maintainability**: Infrastructure as Code with version control and documentation
 
-## Why This Matters
+## What This Is
 
-**For Business Leaders:**
-- Your website stays online even during outages
-- New features get deployed faster and safer
-- Costs are optimized through smart automation
-- Everything meets security and compliance standards
+A cloud platform that:
+- Automatically builds and deploys your code
+- Runs apps in containers on Kubernetes
+- Keeps everything secure and monitored
+- Scales up and down automatically
 
-**For Developers:**
-- Push code and it automatically gets tested and deployed
-- No more manual server setup or deployment headaches
-- Built-in monitoring shows exactly what's happening
-- Easy to scale up when you get more users
+## Documentation Files
 
-**For Operations Teams:**
-- Most maintenance happens automatically
-- Clear alerts when human attention is needed
-- Everything is documented and repeatable
-- Disaster recovery is built-in, not an afterthought
+**📖 Start Here:**
+1. **[Overview](./01.Overview.md)** - What the platform does
+2. **[AWS Services](./03.aws_services.md)** - What tools we use
 
-## How It Works
+**🛠️ For Developers:**
+3. **[CI/CD Pipeline](./05.cicd-developer-platform.md)** - How code gets deployed
+4. **[Developer Tools](./07.internal-development-platform.md)** - Tools and workflows
 
-### 1. Code to Production Pipeline
-When developers write code and save it:
-1. **GitHub** stores the code safely
-2. **Jenkins** automatically runs tests and builds the application
-3. **Security scans** check for vulnerabilities 
-4. **Container images** get created and stored securely
-5. **Kubernetes** deploys the app with zero downtime
-6. **Monitoring** confirms everything is working
+**🔧 For Operations:**
+5. **[Scaling](./04.scalability.md)** - How the platform grows
+6. **[Security](./06.security-access-management.md)** - How we stay safe
+7. **[Access Management](./02.access_and_service_management.md)** - Who can do what
 
-### 2. Two-Region Safety Net
-We run everything in two different AWS regions:
-- **Primary region** (US-East) handles normal traffic
-- **Backup region** (US-West) stays ready to take over
-- If the primary region has problems, traffic automatically switches
-- Data stays synchronized between both regions
+## Quick Start
 
-### 3. Smart Scaling
-The system automatically adjusts based on demand:
-- More users? More servers spin up automatically
-- Quiet period? Excess servers shut down to save money
-- Database getting busy? Read replicas get added
-- CDN caches popular content closer to users
+**New to this platform?**
+→ Read [Overview](./01.Overview.md) first
 
-### 4. Security Throughout
-Security isn't bolted on - it's built into everything:
-- Multi-factor authentication for all access
-- Automatic security scanning of code and containers
-- Web firewall blocks malicious traffic
-- All data encrypted and access logged
+**Want to deploy code?**  
+→ Check [CI/CD Pipeline](./05.cicd-developer-platform.md)
 
-## Key Technologies
+**Setting up security?**  
+→ Go to [Security](./06.security-access-management.md)
 
-**Core Platform:**
-- **Amazon EKS** - Manages our containerized applications
-- **Jenkins** - Automates building and deploying code
-- **Terraform** - Creates and manages all infrastructure
-- **GitHub** - Stores code and triggers deployments
+## Main Tools We Use
 
-**Data & Storage:**
-- **Amazon Aurora** - Main database with automatic backups
-- **DynamoDB** - Fast database for user sessions and caching
-- **S3** - Stores files, backups, and static website content
+- **Amazon EKS** - Runs containerized apps
+- **Jenkins** - Builds and deploys code
+- **GitHub** - Stores code
+- **Terraform** - Creates infrastructure
+- **Datadog** - Monitors everything
 
-**Monitoring & Security:**
-- **Datadog** - Shows us what's happening across everything
-- **AWS CloudWatch** - Native AWS monitoring and alerting
-- **WAF & Shield** - Protects against web attacks
-- **Route 53** - Smart DNS that routes traffic to healthy systems
+## What You Get
 
-## Getting Started
+✅ **Push code → Auto deploy** - No manual steps  
+✅ **Always available** - Multi-zone deployment  
+✅ **Secure by default** - Built-in security  
+✅ **Scales automatically** - Handles traffic spikes  
+✅ **Easy monitoring** - See what's happening  
 
-Want to understand how this works? Start here:
+---
 
-1. **Read the [Overview](./01.Overview.md)** - Get the big picture in 5 minutes
-2. **Check out [AWS Services](./03.aws_services.md)** - See what each piece does
-3. **Dive into [Architecture Details](./01.Overview.md)** - Technical deep dive
-
-Want to build something similar? The documentation includes:
-- Step-by-step implementation guides
-- Best practices we learned along the way
-- Common pitfalls and how to avoid them
-- Cost optimization tips
-
-## Real-World Benefits
-
-After implementing this platform:
-
-✅ **99.9% uptime** - Even during AWS outages  
-✅ **50% faster deployments** - From hours to minutes  
-✅ **30% cost reduction** - Through smart automation  
-✅ **Zero security incidents** - Comprehensive protection  
-✅ **Happy developers** - No more deployment stress  
 
 
